@@ -17,12 +17,10 @@ import org.apache.jena.update.UpdateRequest;
 import org.hadatac.utils.CollectionUtil;
 import org.hadatac.utils.NameSpaces;
 import org.hadatac.utils.FirstLabel;
-import org.hadatac.metadata.loader.LabkeyDataHandler;
 import org.hadatac.entity.pojo.DataAcquisitionSchemaObject;
 //import org.hadatac.entity.pojo.DataAcquisitionSchemaEvent;
 import org.hadatac.entity.pojo.DataAcquisitionSchema;
 import org.hadatac.metadata.loader.URIUtils;
-import org.labkey.remoteapi.CommandException;
 import be.objectify.deadbolt.java.actions.Group;
 import be.objectify.deadbolt.java.actions.Restrict;
 
@@ -565,7 +563,7 @@ public class DataAcquisitionSchemaAttribute extends HADatAcThing {
 	    return DataAcquisitionSchemaAttribute.getCache().get(dasa_uri);
 	}
         DataAcquisitionSchemaAttribute dasa = null;
-        System.out.println("Looking for data acquisition schema attribute with URI <" + dasa_uri + ">");
+        //System.out.println("Looking for data acquisition schema attribute with URI <" + dasa_uri + ">");
 
         String queryString = NameSpaces.getInstance().printSparqlNameSpaceList() + 
                 "SELECT ?partOfSchema ?hasEntity ?hasAttribute " + 
@@ -662,7 +660,7 @@ public class DataAcquisitionSchemaAttribute extends HADatAcThing {
     }
 
     public static List<DataAcquisitionSchemaAttribute> findByAttribute(String attributeUri) {
-        System.out.println("Looking for data acquisition schema attributes with hasco:hasAttribute " + attributeUri);
+        //System.out.println("Looking for data acquisition schema attributes with hasco:hasAttribute " + attributeUri);
         if (attributeUri.startsWith("http")) {
             attributeUri = "<" + attributeUri + ">";
         }
@@ -674,7 +672,7 @@ public class DataAcquisitionSchemaAttribute extends HADatAcThing {
                 "    ?uri hasco:hasAttribute " + attributeUri + ". " +
                 "    ?uri hasco:partOfSchema ?schemaUri .  " + 
                 "} ";
-        System.out.println("[DASA] query string = \n" + queryString);
+        //System.out.println("[DASA] query string = \n" + queryString);
 
         ResultSetRewindable resultsrw = SPARQLUtils.select(
                 CollectionUtil.getCollectionPath(CollectionUtil.Collection.METADATA_SPARQL), queryString);
@@ -710,7 +708,7 @@ public class DataAcquisitionSchemaAttribute extends HADatAcThing {
     // returns a list of DASA's
     // (we need to go study -> data acqusition(s) -> data acqusition schema(s) -> data acquisition schema attributes)
     public static List<DataAcquisitionSchemaAttribute> findByStudy(String studyUri){
-        System.out.println("Looking for data acquisition schema attributes from study " + studyUri);
+        //System.out.println("Looking for data acquisition schema attributes from study " + studyUri);
         if (studyUri.startsWith("http")) {
             studyUri = "<" + studyUri + ">";
         }
@@ -724,7 +722,7 @@ public class DataAcquisitionSchemaAttribute extends HADatAcThing {
                 "    ?uri a hasco:DASchemaAttribute . " + 
                 "    ?uri hasco:hasAttribute ?attrUri . " +
                 "} ";
-        System.out.println("[DASA] query string = \n" + queryString);
+        //System.out.println("[DASA] query string = \n" + queryString);
 
         ResultSetRewindable resultsrw = SPARQLUtils.select(
                 CollectionUtil.getCollectionPath(CollectionUtil.Collection.METADATA_SPARQL), queryString);
@@ -790,7 +788,7 @@ public class DataAcquisitionSchemaAttribute extends HADatAcThing {
     }
 
     public static List<DataAcquisitionSchemaAttribute> findBySchema(String schemaUri) {
-        System.out.println("Looking for data acquisition schema attributes for <" + schemaUri + ">");
+        //System.out.println("Looking for data acquisition schema attributes for <" + schemaUri + ">");
 
         List<DataAcquisitionSchemaAttribute> attributes = new ArrayList<DataAcquisitionSchemaAttribute>();
         String queryString = NameSpaces.getInstance().printSparqlNameSpaceList() + 
@@ -830,56 +828,6 @@ public class DataAcquisitionSchemaAttribute extends HADatAcThing {
     @Override
     public void save() {
         saveToTripleStore();
-    }
-
-    @Restrict(@Group(AuthApplication.DATA_MANAGER_ROLE))
-    public int saveToLabKey(String user_name, String password) {
-        LabkeyDataHandler loader = LabkeyDataHandler.createDefault(user_name, password);
-        List< Map<String, Object> > rows = new ArrayList< Map<String, Object> >();
-        Map<String, Object> row = new HashMap<String, Object>();
-        row.put("hasURI", URIUtils.replaceNameSpaceEx(getUri()));
-        row.put("a", "hasco:DASchemaAttribute");
-        row.put("rdfs:label", getLabel());
-        row.put("rdfs:comment", getLabel());
-        row.put("hasco:partOfSchema", URIUtils.replaceNameSpaceEx(getPartOfSchema()));
-        row.put("hasco:hasEntity", this.getEntity());
-        row.put("hasco:hasAttribute", this.getAttributes());
-        row.put("hasco:hasUnit", this.getUnit());
-        row.put("hasco:hasEvent", URIUtils.replaceNameSpaceEx(daseUri));
-        row.put("hasco:hasSource", "");
-        row.put("hasco:isAttributeOf", URIUtils.replaceNameSpaceEx(dasoUri));
-        row.put("hasco:isVirtual", "");
-        row.put("hasco:isPIConfirmed", "false");
-        rows.add(row);
-        int totalChanged = 0;
-        try {
-            totalChanged = loader.insertRows("DASchemaAttribute", rows);
-        } catch (CommandException e) {
-            try {
-                totalChanged = loader.updateRows("DASchemaAttribute", rows);
-            } catch (CommandException e2) {
-                System.out.println("[ERROR] Could not insert or update DASA(s)");
-            }
-        }
-        return totalChanged;
-    }
-
-    @Restrict(@Group(AuthApplication.DATA_MANAGER_ROLE))
-    @Override
-    public int deleteFromLabKey(String user_name, String password) {
-        LabkeyDataHandler loader = LabkeyDataHandler.createDefault(user_name, password);
-        List< Map<String, Object> > rows = new ArrayList< Map<String, Object> >();
-        Map<String, Object> row = new HashMap<String, Object>();
-        row.put("hasURI", URIUtils.replaceNameSpaceEx(getUri().replace("<","").replace(">","")));
-        rows.add(row);
-
-        try {
-            return loader.deleteRows("DASchemaAttribute", rows);
-        } catch (CommandException e) {
-            System.out.println("[ERROR] Could not delete DASA(s)");
-            e.printStackTrace();
-            return 0;
-        }
     }
 
     @Override
@@ -955,7 +903,7 @@ public class DataAcquisitionSchemaAttribute extends HADatAcThing {
                     request, CollectionUtil.getCollectionPath(CollectionUtil.Collection.METADATA_UPDATE));
             processor.execute();
         } catch (QueryParseException e) {
-            System.out.println("QueryParseException due to update query: " + insert);
+            System.out.println("[ERROR] QueryParseException due to update query: " + insert);
             throw e;
         }
 
